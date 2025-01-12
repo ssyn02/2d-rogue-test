@@ -20,12 +20,14 @@ public class PlayerController : MonoBehaviour
 
     private Rigidbody2D rb;
     private Animator anim;
+    private SpriteRenderer sprite;
     
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
         anim = GetComponent<Animator>();
+        sprite = GetComponent<SpriteRenderer>(); 
     }
 
     // Update is called once per frame
@@ -62,6 +64,12 @@ public class PlayerController : MonoBehaviour
         if (Input.GetButtonDown("Jump"))
         {
             Jump();
+        }
+
+
+        if (Input.GetButtonUp("Jump") && rb.linearVelocityY > 0f)
+        {
+            rb.linearVelocity = new Vector2(rb.linearVelocityX, rb.linearVelocityY * 0.5f);
         }
     }
 
@@ -103,7 +111,7 @@ public class PlayerController : MonoBehaviour
     private void Flip()
     {
         facingRight = !facingRight;
-        transform.Rotate(0, 180, 0);
+        sprite.transform.Rotate(0, 180, 0);
     }
 
     private void OnDrawGizmos()
