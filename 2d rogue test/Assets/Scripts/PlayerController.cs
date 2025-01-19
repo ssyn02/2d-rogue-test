@@ -1,5 +1,6 @@
 using System;
 using JetBrains.Annotations;
+using Unity.VisualScripting;
 using UnityEditor.Tilemaps;
 using UnityEngine;
 
@@ -9,25 +10,31 @@ public class PlayerController : MonoBehaviour
     private bool isGrounded;
     private bool isTouchingWall;
     private bool isWallSliding;
+    private bool isRolling;
+    private bool actionable = true;
 
     public int jumpAmount;
     private int jumpAmountRemaining;
-    private int facingDirection = -1;
+    private int facingDirection = 1;
 
     public Transform groundCheck;
     public Transform wallCheck;
     public LayerMask Ground;
 
-    private float horizontal;
     public float movespeed;
     public float jumpStrength;
     public float groundCheckRadius;
     public float wallCheckDistance;
     public float wallSlideSpeed;
-    private float ticker;
     public float updateTime;
+    public float rollTime;
+    public float rollSpeed;
+    public float rollCooldown;
 
-    public Vector2 wallJumpStrength = new Vector2(10f, 0.3f);
+    private float horizontal;
+    private float ticker;
+    private float lastRoll;
+    private float rollTimeRemaining;
 
     private Rigidbody2D rb;
     private Animator anim;
@@ -47,6 +54,7 @@ public class PlayerController : MonoBehaviour
     void Update()
     {
         JumpCheck();
+        RollCheck();
         WallSlideCheck();
         CheckDirection();
         CheckForInput();
@@ -66,6 +74,7 @@ public class PlayerController : MonoBehaviour
         anim.SetBool("isGrounded", isGrounded);
         anim.SetFloat("yVelocity", rb.linearVelocityY);
         anim.SetBool("isWallSliding", isWallSliding);
+        anim.SetBool("isRolling", isRolling);
     }
 
     private void CheckSurroundings()
@@ -89,11 +98,19 @@ public class PlayerController : MonoBehaviour
         {
             rb.linearVelocity = new Vector2(rb.linearVelocityX, rb.linearVelocityY * 0.5f);
         }
+
+        if (Input.GetButtonDown("Fire3") && (Time.time >= (lastRoll + rollCooldown)))
+        {
+            Roll();
+        }
     }
 
     private void Move()
     {
-        rb.linearVelocity = new Vector2(movespeed * horizontal, rb.linearVelocityY);
+        if (actionable)
+        {
+            rb.linearVelocity = new Vector2(movespeed * horizontal, rb.linearVelocityY);
+        }
 
         if (isWallSliding)
         {
@@ -106,10 +123,25 @@ public class PlayerController : MonoBehaviour
 
     private void Jump()
     {
-        if (jumpAmountRemaining > 0)
+        if (jumpAmountRemaining >= 0 && isWallSliding)
+        {
+            rb.linearVelocity = new Vector2(rb.linearVelocityX, jumpStrength);
+        }
+
+        else if (jumpAmountRemaining > 0 && actionable)
         {
             rb.linearVelocity = new Vector2(rb.linearVelocityX, jumpStrength);
             jumpAmountRemaining--;
+        }
+    }
+
+    private void Roll()
+    {
+        if (!isWallSliding && isGrounded)
+        {
+            isRolling = true;
+            lastRoll = Time.time;
+            rollTimeRemaining = rollTime;
         }
     }
 
@@ -132,10 +164,28 @@ public class PlayerController : MonoBehaviour
         {
             jumpAmountRemaining = jumpAmount;
         }
+    }
 
-        if(isWallSliding && jumpAmountRemaining <= 1)
+    private void RollCheck()
+    {
+        if (isRolling)
         {
-            jumpAmountRemaining = 1;
+            if (rollTimeRemaining > 0)
+            {
+                actionable = false;
+                rb.linearVelocity = new Vector2(rollSpeed * facingDirection, (rb.linearVelocityY)*0.97f);
+                rollTimeRemaining -= Time.deltaTime;
+            }
+
+            if (rollTimeRemaining <= 0 || isTouchingWall)
+            {
+                isRolling = false;
+                actionable = true;
+            }
+        }
+        if (isWallSliding)
+        {
+            lastRoll = 0;
         }
     }
 
@@ -146,9 +196,9 @@ public class PlayerController : MonoBehaviour
 
     private void Flip()
     {   
-        if (!isWallSliding)
+        if (!isWallSliding && actionable)
         {
-            facingDirection *= -1; 
+            facingDirection *= -1;
             facingRight = !facingRight;
             sprite.transform.Rotate(0, 180, 0);
         }

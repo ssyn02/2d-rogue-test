@@ -11362,7 +11362,9 @@ MonoBehaviour:
   wallCheckDistance: 0.55
   wallSlideSpeed: 0
   updateTime: 0
-  wallJumpStrength: {x: 10, y: 0.3}
+  rollTime: 0.55
+  rollSpeed: 10
+  rollCooldown: 1
   varDisplay: {fileID: 822876183}
 --- !u!95 &1976794513
 Animator:
