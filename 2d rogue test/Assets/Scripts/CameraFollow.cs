@@ -6,7 +6,7 @@ public class CameraFollow : MonoBehaviour
     public Vector3 offset;
     public float smoothSpeed = 0.85f;
 
-    private void LateUpdate()
+    private void FixedUpdate()
     {
         Vector3 desiredPosition = playerTransform.position + offset;
         Vector3 smoothPosition = Vector3.Lerp(transform.position, desiredPosition, smoothSpeed * Time.deltaTime);

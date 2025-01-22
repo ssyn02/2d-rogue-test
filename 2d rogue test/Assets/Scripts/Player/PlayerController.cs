@@ -1,26 +1,32 @@
-using System;
-using JetBrains.Annotations;
-using Unity.VisualScripting;
-using UnityEditor.Tilemaps;
+
 using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
+    #region Boolean Variables
     private bool facingRight = false;
     private bool isGrounded;
     private bool isTouchingWall;
     private bool isWallSliding;
     private bool isRolling;
-    private bool actionable = true;
+    private bool canMove = true;
+    private bool canJump = true;
+    private bool canFlip = true;
+    #endregion
 
+    #region Integer Variables
     public int jumpAmount;
     private int jumpAmountRemaining;
     private int facingDirection = 1;
+    #endregion
 
+    #region Terrain Detection Variables
     public Transform groundCheck;
     public Transform wallCheck;
     public LayerMask Ground;
+    #endregion
 
+    #region Float Variables
     public float movespeed;
     public float jumpStrength;
     public float groundCheckRadius;
@@ -35,14 +41,20 @@ public class PlayerController : MonoBehaviour
     private float ticker;
     private float lastRoll;
     private float rollTimeRemaining;
+    #endregion
 
+    #region Component Variables
     private Rigidbody2D rb;
     private Animator anim;
     private SpriteRenderer sprite;
-
     public TMPro.TMP_Text varDisplay;
-    
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
+    public PlayerCombatController playerCombatController;
+    public GameObject slideDust;
+    #endregion
+
+
+
+    #region Unity Callback Functions
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -59,7 +71,7 @@ public class PlayerController : MonoBehaviour
         CheckDirection();
         CheckForInput();
         UpdateAnimations();
-        displayVariableOnScreen(rb.linearVelocity.x);
+        displayVariableOnScreen(rb.linearVelocityY);
     }
 
     private void FixedUpdate()
@@ -70,13 +82,73 @@ public class PlayerController : MonoBehaviour
 
     private void UpdateAnimations()
     {
-        anim.SetBool("isWalking", rb.linearVelocity.x > 0.01f || rb.linearVelocity.x < -0.01f);
+        anim.SetBool("isWalking", rb.linearVelocityX > 0.01f || rb.linearVelocityX < -0.01f);
         anim.SetBool("isGrounded", isGrounded);
         anim.SetFloat("yVelocity", rb.linearVelocityY);
         anim.SetBool("isWallSliding", isWallSliding);
         anim.SetBool("isRolling", isRolling);
     }
+    #endregion
 
+    #region Action Functions
+    private void Move()
+    {
+        if (canMove && !playerCombatController.isAttacking)
+        {
+            rb.linearVelocity = new Vector2(movespeed * horizontal, rb.linearVelocityY);
+        }
+
+        if (isWallSliding)
+        {
+            if(rb.linearVelocityY < -wallSlideSpeed)
+            {
+                rb.linearVelocity = new Vector2(rb.linearVelocityX, -wallSlideSpeed);
+            }
+        }
+    }
+
+    private void Jump()
+    {
+        if (jumpAmountRemaining >= 0 && isWallSliding)
+        {
+            rb.linearVelocity = new Vector2(rb.linearVelocityX, jumpStrength);
+        }
+
+        else if (jumpAmountRemaining > 0 && canJump)
+        {
+            rb.linearVelocity = new Vector2(rb.linearVelocityX, jumpStrength);
+            jumpAmountRemaining--;
+        }
+    }
+
+    private void Roll()
+    {
+        if (!isWallSliding && isGrounded)
+        {
+            isRolling = true;
+            lastRoll = Time.time;
+            rollTimeRemaining = rollTime;
+        }
+    }
+    private void Flip()
+    {   
+        if (!isWallSliding && canFlip)
+        {
+            facingDirection *= -1;
+            facingRight = !facingRight;
+            sprite.transform.Rotate(0, 180, 0);
+        }
+
+    }
+
+    private void StopMoving()
+    {
+        rb.linearVelocity = new Vector2(0, 0);
+    }
+
+    #endregion
+
+    #region Check Functions
     private void CheckSurroundings()
     {
         isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, Ground);
@@ -102,46 +174,6 @@ public class PlayerController : MonoBehaviour
         if (Input.GetButtonDown("Fire3") && (Time.time >= (lastRoll + rollCooldown)))
         {
             Roll();
-        }
-    }
-
-    private void Move()
-    {
-        if (actionable)
-        {
-            rb.linearVelocity = new Vector2(movespeed * horizontal, rb.linearVelocityY);
-        }
-
-        if (isWallSliding)
-        {
-            if(rb.linearVelocityY < -wallSlideSpeed)
-            {
-                rb.linearVelocity = new Vector2(rb.linearVelocityX, -wallSlideSpeed);
-            }
-        }
-    }
-
-    private void Jump()
-    {
-        if (jumpAmountRemaining >= 0 && isWallSliding)
-        {
-            rb.linearVelocity = new Vector2(rb.linearVelocityX, jumpStrength);
-        }
-
-        else if (jumpAmountRemaining > 0 && actionable)
-        {
-            rb.linearVelocity = new Vector2(rb.linearVelocityX, jumpStrength);
-            jumpAmountRemaining--;
-        }
-    }
-
-    private void Roll()
-    {
-        if (!isWallSliding && isGrounded)
-        {
-            isRolling = true;
-            lastRoll = Time.time;
-            rollTimeRemaining = rollTime;
         }
     }
 
@@ -172,15 +204,24 @@ public class PlayerController : MonoBehaviour
         {
             if (rollTimeRemaining > 0)
             {
-                actionable = false;
+                canMove = false;
+                canFlip = false;
                 rb.linearVelocity = new Vector2(rollSpeed * facingDirection, (rb.linearVelocityY)*0.97f);
                 rollTimeRemaining -= Time.deltaTime;
             }
 
-            if (rollTimeRemaining <= 0 || isTouchingWall)
+            if (rollTimeRemaining <= 0)
             {
                 isRolling = false;
-                actionable = true;
+                canMove = true;
+                canFlip = true;
+            }
+            else if (isTouchingWall)
+            {
+                isRolling = false;
+                canMove = true;
+                canFlip = true;
+                lastRoll = 0;
             }
         }
         if (isWallSliding)
@@ -193,17 +234,9 @@ public class PlayerController : MonoBehaviour
     {
         isWallSliding = (isTouchingWall && !isGrounded && rb.linearVelocityY < 0);
     }
+    #endregion
 
-    private void Flip()
-    {   
-        if (!isWallSliding && actionable)
-        {
-            facingDirection *= -1;
-            facingRight = !facingRight;
-            sprite.transform.Rotate(0, 180, 0);
-        }
-
-    }
+    #region Other Functions
 
     private void OnDrawGizmos()
     {
@@ -221,4 +254,10 @@ public class PlayerController : MonoBehaviour
             varDisplay.text = variable.ToString("F3");
         }
     }
+
+    private void DisableFlip() => canFlip = false;
+
+    private void EnableFlip() => canFlip = true;
+
+    #endregion
 }
