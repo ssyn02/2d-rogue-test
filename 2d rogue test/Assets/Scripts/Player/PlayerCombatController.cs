@@ -7,10 +7,9 @@ public class PlayerCombatController : MonoBehaviour
     public bool isAttacking;
     private int attackCounter = 0;
 
-    [SerializeField] private float inputBufferTime;
-    [SerializeField] private float attack1Radius;
-    [SerializeField] private float attack1Damage;
+    [SerializeField] private float inputBufferTime, attack1Radius, attack1Damage;
     private float lastInputTime = Mathf.NegativeInfinity;
+    private float[] attackDetails = new float[2];
 
     [SerializeField] private Transform attack1HitboxPosition;
     [SerializeField] private LayerMask damageable;
@@ -63,10 +62,16 @@ public class PlayerCombatController : MonoBehaviour
     private void CheckAttackHitbox()
     {
         Collider2D[] detectedObjects = Physics2D.OverlapCircleAll(attack1HitboxPosition.position, attack1Radius, damageable);
+
+        attackDetails[0] = attack1Damage;
+        attackDetails[1] = transform.position.x;
+
         foreach (Collider2D collider in detectedObjects)
         {
-            collider.transform.parent.SendMessage("Damage", attack1Damage);
+            collider.transform.parent.SendMessage("Damage", attackDetails);
+            Debug.Log("asd");
         }
+
     }
 
     private void FinishAttack1()

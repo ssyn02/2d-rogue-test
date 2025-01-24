@@ -71,7 +71,7 @@ public class PlayerController : MonoBehaviour
         CheckDirection();
         CheckForInput();
         UpdateAnimations();
-        displayVariableOnScreen(rb.linearVelocityY);
+        //displayVariableOnScreen(rb.linearVelocityY);
     }
 
     private void FixedUpdate()
@@ -206,7 +206,7 @@ public class PlayerController : MonoBehaviour
             {
                 canMove = false;
                 canFlip = false;
-                rb.linearVelocity = new Vector2(rollSpeed * facingDirection, (rb.linearVelocityY)*0.97f);
+                rb.linearVelocity = new Vector2(rollSpeed * facingDirection, 0);
                 rollTimeRemaining -= Time.deltaTime;
             }
 
